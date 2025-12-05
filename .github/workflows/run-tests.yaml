@@ -5,10 +5,10 @@ on:
     branches:
       - main
       - dev
-    pull_request:
-      branches:
-        - main
-        - dev
+  pull_request:
+    branches:
+      - main
+      - dev
 
 jobs:
   test:
@@ -23,5 +23,11 @@ jobs:
         with:
           node-version: 18
           cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./strajk-bowling
+
       - name: Run tests and generate coverage
         run: npm test
+        working-directory: ./strajk-bowling
