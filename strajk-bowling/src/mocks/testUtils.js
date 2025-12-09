@@ -1,5 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 
 // Global konstanter för att undvika skriva dessa i varje test
@@ -24,8 +23,11 @@ export async function bookingDetailsMinimum(user, players = 4, lanes = 1) {
   const peopleInput = screen.getByLabelText(/awesome bowlers/i);
   const lanesInput = screen.getByLabelText(/lanes/i);
 
-  await user.type(dateInput, "2025-12-24");
-  await user.type(timeInput, "18:00");
+  /*  await user.type(dateInput, "2025-12-24");
+  await user.type(timeInput, "18:00"); */
+  fireEvent.change(dateInput, { target: { value: "2025-12-24" } });
+  fireEvent.change(timeInput, { target: { value: "18:00" } });
+
   await user.clear(peopleInput);
   if (players !== 0) await user.type(peopleInput, String(players));
   await user.clear(lanesInput);
