@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { afterEach, vi } from "vitest";
+import { afterEach, describe, vi } from "vitest";
 
 import Booking from "./Booking.jsx";
 import Confirmation from "./Confirmation.jsx";
@@ -161,5 +161,143 @@ describe("User Story 1 VG-krav: Validering/felhantering", () => {
     expect(
       screen.queryByText(/Alla skor måste vara ifyllda/i)
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("User Story 2: Välja och översikt av skostorlekar", () => {
+  // Användaren ska kunna ange skostorlek för varje spelare.
+  // Användaren ska kunna ändra skostorlek för varje spelare.
+  it("Should allow adding multiple shoes and changing sizes", async () => {
+    const { user } = setupRouter();
+    const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
+
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+
+    let shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    expect(shoeInputs).toHaveLength(2);
+
+    await user.type(shoeInputs[0], "38");
+    // ändrar skostorleken
+    await user.clear(shoeInputs[0]);
+    await user.type(shoeInputs[0], "39");
+    expect(shoeInputs[0]).toHaveValue("39");
+  });
+
+  // Det ska vara möjligt att välja skostorlek för alla spelare som ingår i bokningen.
+  // Systemet ska visa en översikt där användaren kan kontrollera de valda skostorlekarna.
+  it("Should display correct number of shoe fields while booking 3 people", async () => {
+    const { user } = setupRouter();
+    const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
+
+    const peopleInput = screen.getByLabelText(/awesome bowlers/i);
+
+    await user.clear(peopleInput);
+    await user.type(peopleInput, "3");
+
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+
+    const shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    expect(shoeInputs).toHaveLength(3);
+
+    await user.type(shoeInputs[0], "40");
+    await user.type(shoeInputs[1], "41");
+    await user.type(shoeInputs[2], "42");
+  });
+});
+
+describe("User Story 3: Ta bort skostorleksfält", () => {
+  // Användaren ska kunna ta bort ett tidigare valt fält för skostorlek genom att klicka på en "-"-knapp vid varje spelare.
+  it("Should remove shoe field and update total number of shoes", async () => {
+    const { user } = setupRouter();
+    const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
+
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+
+    let shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    expect(shoeInputs).toHaveLength(3);
+
+    const removeButtons = screen.getAllByRole("button", { name: "-" });
+
+    await user.click(removeButtons[0]);
+
+    shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    expect(shoeInputs).toHaveLength(2);
+  });
+});
+
+describe("User Story 2 VG: Validering av antal skor och ifyllda storlekar", () => {
+  const BOOK_BUTTON = BOOK_BUTTON_NAME;
+  // Om antalet personer och skor inte matchas ska ett felmeddelande visas.
+  // Testar med 4 spelare och 3 skofält.
+  it("Should display error if number of shoes doesn't match number of players", async () => {
+    const { user } = setupRouter();
+
+    const peopleInput = screen.getByLabelText(/awesome bowlers/i);
+    const lanesInput = screen.getByLabelText(/lanes/i);
+    const dateInput = screen.getByLabelText(/date/i);
+    const timeInput = screen.getByLabelText(/time/i);
+    const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
+
+    await user.type(dateInput, "2025-12-24");
+    await user.type(timeInput, "18:00");
+    await user.clear(peopleInput);
+    await user.type(peopleInput, "4");
+    await user.clear(lanesInput);
+    await user.type(lanesInput, "1");
+
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+
+    const shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    await user.type(shoeInputs[0], "40");
+    await user.type(shoeInputs[1], "41");
+    await user.type(shoeInputs[2], "42");
+
+    const bookButton = screen.getByRole("button", { name: BOOK_BUTTON });
+    await user.click(bookButton);
+
+    expect(
+      screen.getByText(ERROR_MESSAGE_PEOPLE_SHOES_MISMATCH)
+    ).toBeInTheDocument();
+  });
+
+  // Om användaren försöker slutföra bokningen utan att ange skostorlek för en spelare som har valt att boka skor, ska systemet visa ett felmeddelande och be om att skostorleken anges.
+  // Testar med 4 spelare och 4 skofält men en har inte angett storlek.
+  it("Should display an error if a shoe size is missing.", async () => {
+    const { user } = setupRouter();
+
+    const peopleInput = screen.getByLabelText(/awesome bowlers/i);
+    const lanesInput = screen.getByLabelText(/lanes/i);
+    const dateInput = screen.getByLabelText(/date/i);
+    const timeInput = screen.getByLabelText(/time/i);
+    const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
+
+    await user.type(dateInput, "2025-12-24");
+    await user.type(timeInput, "18:00");
+    await user.clear(peopleInput);
+    await user.type(peopleInput, "4");
+    await user.clear(lanesInput);
+    await user.type(lanesInput, "1");
+
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+    await user.click(ADD_SHOE_BUTTON);
+
+    const shoeInputs = screen.getAllByLabelText(/shoe size/i);
+    await user.type(shoeInputs[0], "40");
+    await user.type(shoeInputs[1], "41");
+    await user.type(shoeInputs[2], "42");
+
+    const bookButton = screen.getByRole("button", { name: BOOK_BUTTON });
+    await user.click(bookButton);
+
+    expect(screen.getByText(ERROR_MESSAGE_MISSING_SIZE)).toBeInTheDocument();
   });
 });
