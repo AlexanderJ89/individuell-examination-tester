@@ -20,6 +20,7 @@ export default defineConfig({
         "**/__mocks__/",
         "**/main.jsx",
         "**vite.config.js",
+        "src/mocks/testUtils.js",
       ],
     },
   },

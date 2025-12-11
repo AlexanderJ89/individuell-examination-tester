@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 
 const API_URL =
-  "https://731xy9c2ak.execute-api-eu-north-1.amazonaws.com/booking";
+  "https://731xy9c2ak.execute-api.eu-north-1.amazonaws.com/booking";
 
 export const handlers = [
   http.post(API_URL, async ({ request }) => {
