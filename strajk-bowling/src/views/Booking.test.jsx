@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { afterEach, describe, expect, vi } from "vitest";
+import { afterEach, describe, expect } from "vitest";
 
 import Booking from "./Booking.jsx";
 import Confirmation from "./Confirmation.jsx";
@@ -20,11 +20,12 @@ import {
 // Valt en integrerad teststrategi eftersom all affärslogik, validering och API-anrop ligger centralt i booking.
 // Det garanterar att jag testar hela flödet som en riktigt användare skulle göra.
 
-// Mocka sessionStorage globalt
+// Mocka sessionStorage globalt för att simulera lagring i webbläsare
 Object.defineProperty(window, "sessionStorage", {
   value: sessionStorageMock,
 });
 
+// Setup-funktion för konfiguering av React Router i minnesmiljö
 function setupRouter(initialRoute = "/") {
   const router = createMemoryRouter(
     [
@@ -66,16 +67,18 @@ describe("User Story 1: Bokning av datum, tid och antal spelare/banor", () => {
     const peopleInput = screen.getByLabelText(/awesome bowlers/i);
     const lanesInput = screen.getByLabelText(/lanes/i);
 
+    // Fyller i datum o tid
     await user.type(dateInput, "2025-12-24");
     await user.type(timeInput, "18:00");
 
+    // Fyller i 4 spelare o 1 bana
     await user.clear(peopleInput);
     await user.type(peopleInput, "4");
 
     await user.clear(lanesInput);
     await user.type(lanesInput, "1");
 
-    // Verifiera minst 1 spelar är möjligt
+    // Verifiera minst 1 spelar är möjligt som är minimikrav
     await user.clear(peopleInput);
     await user.type(peopleInput, "1");
     expect(peopleInput).toHaveValue(1);
@@ -134,12 +137,13 @@ describe("User Story 1 VG-krav: Validering/felhantering", () => {
 
     await user.type(dateInput, "2025-12-24");
     await user.type(timeInput, "18:00");
-    // Testa med 5 spelare och 1 bana.
+    // Testa med 5 spelare och 1 bana för att trigga VG-fel (max 4 spelare/bana)
     await user.clear(peopleInput);
     await user.type(peopleInput, "5");
     await user.clear(lanesInput);
     await user.type(lanesInput, "1");
 
+    // Fyll i skostorlekar för komma förbi validering 2
     for (let i = 0; i < 5; i++) {
       await user.click(addShoeButton);
     }
@@ -155,7 +159,7 @@ describe("User Story 1 VG-krav: Validering/felhantering", () => {
     await user.click(bookButton);
 
     expect(screen.getByText(ERROR_MESSAGE_MAX_PLAYERS)).toBeInTheDocument();
-    // Check för att se till att de följer rätt ordning. Hade lite problem först.
+    // Check för att se till att de följer rätt valdieringsordning och inte fastnar på andra fel. Hade lite problem först.
     expect(
       screen.queryByText(/Antalet skor måste stämma överens/i)
     ).not.toBeInTheDocument();
@@ -189,7 +193,7 @@ describe("User Story 2: Välja och översikt av skostorlekar", () => {
   // ACCEPTANSKRITERIER FÖR G
   // Det ska vara möjligt att välja skostorlek för alla spelare som ingår i bokningen.
   // Systemet ska visa en översikt där användaren kan kontrollera de valda skostorlekarna.
-  it("Should display correct number of shoe fields while booking 3 people", async () => {
+  it("Should display correct number of shoe fields for 3 people", async () => {
     const { user } = setupRouter();
     const ADD_SHOE_BUTTON = screen.getByRole("button", { name: "+" });
 
@@ -273,11 +277,19 @@ describe("User Story 2 VG: Validering av antal skor och ifyllda storlekar", () =
     expect(
       screen.getByText(ERROR_MESSAGE_PEOPLE_SHOES_MISMATCH)
     ).toBeInTheDocument();
+    // Kontrollerar av valideringsordning att jag ej fastnar på MAX_PLAYERS
+    expect(
+      screen.queryByText(/Det får max vara 4 spelare per bana/i)
+    ).not.toBeInTheDocument();
+    // Kontrollerar av valideringsordning att jag ej fastnar på MISSING_SIZE
+    expect(
+      screen.queryByText(/Alla skor måste vara ifyllda/i)
+    ).not.toBeInTheDocument();
   });
   // ACCEPTANSKRITERIE FÖR VG
   // Om användaren försöker slutföra bokningen utan att ange skostorlek för en spelare som har valt att boka skor, ska systemet visa ett felmeddelande och be om att skostorleken anges.
   // Testar med 4 spelare och 4 skofält men en har inte angett storlek.
-  it("Should display an error if a shoe size is missing.", async () => {
+  it("Should display an error message if a shoe size is missing.", async () => {
     const { user } = setupRouter();
 
     const peopleInput = screen.getByLabelText(/awesome bowlers/i);
@@ -307,10 +319,18 @@ describe("User Story 2 VG: Validering av antal skor och ifyllda storlekar", () =
     await user.click(bookButton);
 
     expect(screen.getByText(ERROR_MESSAGE_MISSING_SIZE)).toBeInTheDocument();
+
+    expect(
+      screen.queryByText(/Det får max vara 4 spelare per bana/i)
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText(/Antalet skor måste stämma överens/i)
+    ).not.toBeInTheDocument();
   });
 });
 
-describe("User Story 4 och 5: Bokningsprocess, Bekräftelse och Navigation", () => {
+describe("User Story 4 och 5: Bokningsprocess, bekräftelse och navigation", () => {
   const BOOK_BUTTON = BOOK_BUTTON_NAME;
   // ACCEPTANSKRITERIER FÖR G
   // Användaren ska kunna slutföra bokningen genom att klicka på en "slutför bokning"-knapp.
@@ -319,8 +339,8 @@ describe("User Story 4 och 5: Bokningsprocess, Bekräftelse och Navigation", () 
   // Den totala summan ska visas tydligt på bekräftelsesidan och inkludera en uppdelning mellan spelare och banor.
   // Användaren ska kunna navigera från bokningsvyn till bekräftelsevyn när bokningen är klar.
   it(
-    "Should submit a complete booking, navigate and display confirmation",
-    { timeout: 10000 },
+    "Should send a complete booking, navigate and display confirmation",
+    { timeout: 10000 }, // Timeout för ge tid åt asynkrona anrop MSW-anrop och skydda hela testet från fastna.
     async () => {
       const { user, router } = setupRouter();
 
@@ -350,14 +370,14 @@ describe("User Story 4 och 5: Bokningsprocess, Bekräftelse och Navigation", () 
 
       // verifiera att navigering skett efter mockade API-anrop
       await waitFor(() => {
-        // Kontroll att state hunnit uppdatera innan API-anrop triggas
+        // Kontroll att state hunnit uppdatera innan API-anrop triggas med bokningsknappen
         expect(shoeInputs[3]).toHaveValue("43");
       });
 
       // Klicka på bokningsknapp
       const bookButton = screen.getByRole("button", { name: BOOK_BUTTON });
       await user.click(bookButton);
-
+      // Vänta på MSW-anropet slutförs o navigation triggas
       await waitFor(
         () => {
           expect(router.state.location.pathname).toBe("/confirmation");
@@ -388,7 +408,7 @@ describe("User Story 4 och 5: Bokningsprocess, Bekräftelse och Navigation", () 
   );
   // ACCEPTANSKRITERIE FÖR G
   // Om användaren navigerar till bekräftelsevyn och ingen bokning är gjord eller finns i session storage ska texten "Ingen bokning gjord visas".
-  it("Should display 'Inga bokning gjord' when session storage is empty and no state is passed", async () => {
+  it("Should display 'Inga bokning gjord' when no booking is saved", async () => {
     // Mockar sessionStorage, returnera null = ingen sparad bokning
     sessionStorageMock.getItem.mockReturnValue(null);
 
@@ -402,7 +422,7 @@ describe("User Story 4 och 5: Bokningsprocess, Bekräftelse och Navigation", () 
 
   // ACCEPTANSKRITERIE FÖR G
   // Om användaren navigerar till bekräftelsevyn och det finns en bokning sparad i session storage ska denna visas.
-  it("Should display booking from session storage if state is null", async () => {
+  it("Should display booking from session storage", async () => {
     // Mockad data
     const mockSavedConfirmation = {
       bookingId: "SB-SAVED-5678",
